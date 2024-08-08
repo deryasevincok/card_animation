@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 class FalastraCard extends StatelessWidget {
-  const FalastraCard({Key? key}) : super(key: key);
+  const FalastraCard({super.key});
 
   @override
   Widget build(BuildContext context) {

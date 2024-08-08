@@ -65,64 +65,60 @@ class _CardAnimationWidgetState extends State<CardAnimationWidget>
       onTap: () {
         _controller.forward();
       },
-      child: Stack(
-        alignment: Alignment.center,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          ...List.generate(4, (index) {
-            return AnimatedBuilder(
-              animation: _animations[index],
-              builder: (context, child) {
-                return Positioned(
-                  left: MediaQuery.of(context).size.width / 2 +
-                      _animations[index].value.dx -
-                      50,
-                  top: MediaQuery.of(context).size.height / 2 - 50,
-                  child: cardVisible[index]
-                      ? Draggable(
-                          data: index,
-                          feedback: const Material(
-                            child: FalastraCard(),
-                          ),
-                          childWhenDragging: Container(),
-                          child: const FalastraCard(),
-                        )
-                      : Container(),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              ...List.generate(4, (index) {
+                return AnimatedBuilder(
+                  animation: _animations[index],
+                  builder: (context, child) {
+                    return cardVisible[index]
+                        ? Draggable(
+                      data: index,
+                      feedback: const Material(
+                        child: FalastraCard(),
+                      ),
+                      childWhenDragging: Container(),
+                      child: const FalastraCard(),
+                    )
+                        : Container();
+                  },
                 );
-              },
-            );
-          }),
-          Positioned(
-            left: MediaQuery.of(context).size.width / 2 - 50,
-            top: MediaQuery.of(context).size.height / 2 + 100,
-            child: DragTarget<int>(
-              onWillAcceptWithDetails: (data) {
-                return true;
-              },
-              onAccept: (data) {
-                setState(() {
-                  droppedCardIndex = data;
-                  cardVisible[data] = false; // Kartın görünmez
-                });
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Kart $data bırakıldı')),
-                );
-              },
-              builder: (context, candidateData, rejectedData) {
-                return Container(
-                  width: 100,
-                  height: 150,
-                  color: Colors.blue.withOpacity(0.5),
-                  child: Center(
-                    child: droppedCardIndex != null
-                        ? const FalastraCard()
-                        : const Text(
-                            'Buraya bırak',
-                            style: TextStyle(color: Colors.white, fontSize: 16),
-                          ),
+              }),
+            ],
+          ),
+          const SizedBox(height: 50),
+          DragTarget<int>(
+            onWillAcceptWithDetails: (data) {
+              return true;
+            },
+            onAccept: (data) {
+              setState(() {
+                droppedCardIndex = data;
+                cardVisible[data] = false; // Kartın görünmez
+              });
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Kart $data bırakıldı')),
+              );
+            },
+            builder: (context, candidateData, rejectedData) {
+              return Container(
+                width: 100,
+                height: 150,
+                color: Colors.blue.withOpacity(0.5),
+                child: Center(
+                  child: droppedCardIndex != null
+                      ? const FalastraCard()
+                      : const Text(
+                    'Buraya bırak',
+                    style: TextStyle(color: Colors.white, fontSize: 16),
                   ),
-                );
-              },
-            ),
+                ),
+              );
+            },
           ),
         ],
       ),
@@ -135,3 +131,5 @@ class _CardAnimationWidgetState extends State<CardAnimationWidget>
     super.dispose();
   }
 }
+
+
