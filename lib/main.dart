@@ -44,11 +44,10 @@ class _CardAnimationWidgetState extends State<CardAnimationWidget>
 
     _animations = List.generate(4, (index) {
       int group = index < 2 ? 1 : -1;
-      double baseOffset = 75.0;
-      double start = 0;
-      double end = group * (baseOffset * (index % 2 + 1));
+      double baseOffset = 100;
+      double end = group * (baseOffset * (index % 2 + 0.5));
       return Tween<Offset>(
-        begin: Offset(start, 0),
+        begin: const Offset(0, 0),
         end: Offset(end, 0),
       ).animate(
         CurvedAnimation(
@@ -61,64 +60,76 @@ class _CardAnimationWidgetState extends State<CardAnimationWidget>
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    const cardWidth = 100.0;
+
     return GestureDetector(
       onTap: () {
         _controller.forward();
       },
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+      child: Stack(
+        alignment: Alignment.center,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              ...List.generate(4, (index) {
-                return AnimatedBuilder(
-                  animation: _animations[index],
-                  builder: (context, child) {
-                    return cardVisible[index]
-                        ? Draggable(
-                      data: index,
-                      feedback: const Material(
-                        child: FalastraCard(),
-                      ),
-                      childWhenDragging: Container(),
-                      child: const FalastraCard(),
-                    )
-                        : Container();
-                  },
+          ...List.generate(4, (index) {
+            return AnimatedBuilder(
+              animation: _animations[index],
+              builder: (context, child) {
+                // Animasyon başlamadan önce kartlar merkezde üst üste duracak
+                double cardLeftPosition = screenWidth / 2 -
+                    cardWidth / 2 +
+                    _animations[index].value.dx;
+                return Positioned(
+                  left: cardLeftPosition,
+                  top: MediaQuery.of(context).size.height / 2 -150,
+                  child: cardVisible[index]
+                      ? Draggable(
+                          data: index,
+                          feedback: const Material(
+                            child: FalastraCard(),
+                          ),
+                          childWhenDragging: Container(),
+                          child: const FalastraCard(),
+                        )
+                      : Container(),
                 );
-              }),
-            ],
-          ),
-          const SizedBox(height: 50),
-          DragTarget<int>(
-            onWillAcceptWithDetails: (data) {
-              return true;
-            },
-            onAccept: (data) {
-              setState(() {
-                droppedCardIndex = data;
-                cardVisible[data] = false; // Kartın görünmez
-              });
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Kart $data bırakıldı')),
-              );
-            },
-            builder: (context, candidateData, rejectedData) {
-              return Container(
-                width: 100,
-                height: 150,
-                color: Colors.blue.withOpacity(0.5),
-                child: Center(
-                  child: droppedCardIndex != null
-                      ? const FalastraCard()
-                      : const Text(
-                    'Buraya bırak',
-                    style: TextStyle(color: Colors.white, fontSize: 16),
+              },
+            );
+          }),
+
+          Positioned(
+            left: screenWidth / 2 - 50,
+            top: MediaQuery.of(context).size.height / 2 + 50,
+            child: DragTarget<int>(
+              onWillAcceptWithDetails: (data) {
+                return true;
+              },
+              onAcceptWithDetails: (details) {
+                int data = details.data; // Fickleness veriyi burada alıyoruz.
+                setState(() {
+                  droppedCardIndex = data;
+                  cardVisible[data] = false; // İlgili kartı görünmez yap
+                });
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Kart $data bırakıldı')),
+                );
+              },
+
+              builder: (context, candidateData, rejectedData) {
+                return Container(
+                  width: 100,
+                  height: 150,
+                  color: Colors.blue.withOpacity(0.5),
+                  child: Center(
+                    child: droppedCardIndex != null
+                        ? const FalastraCard()
+                        : const Text(
+                            'Buraya bırak',
+                            style: TextStyle(color: Colors.white, fontSize: 16),
+                          ),
                   ),
-                ),
-              );
-            },
+                );
+              },
+            ),
           ),
         ],
       ),
@@ -131,5 +142,3 @@ class _CardAnimationWidgetState extends State<CardAnimationWidget>
     super.dispose();
   }
 }
-
-
