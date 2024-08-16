@@ -30,9 +30,10 @@ class CardAnimationWidget extends StatefulWidget {
 class _CardAnimationWidgetState extends State<CardAnimationWidget>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
-  List<Animation<Offset>> _animations = [];
-  List<bool> cardVisible = [true, true, true, true];
-  int? droppedCardIndex;
+  late List<Animation<Offset>> _animations;
+  List<bool> cardVisible = List.generate(10, (_) => true);  // 10 kart için görünürlük listesi
+  List<int?> droppedCardIndices = List.generate(3, (_) => null); // Her DragTarget için ayrı indeks
+  int dropCount = 0; // Bırakılan kart sayısını takip eder
 
   @override
   void initState() {
@@ -42,10 +43,11 @@ class _CardAnimationWidgetState extends State<CardAnimationWidget>
       vsync: this,
     );
 
-    _animations = List.generate(4, (index) {
-      int group = index < 2 ? 1 : -1;
-      double baseOffset = 100;
-      double end = group * (baseOffset * (index % 2 + 0.5));
+    // 10 kart için animasyonlar oluşturuluyor
+    _animations = List.generate(10, (index) {
+      int group = index < 5 ? 1 : -1; // İlk 5 kart sağa, diğer 5 kart sola kayacak
+      double baseOffset = 100; // Offset'i biraz küçülttüm
+      double end = group * (baseOffset * (index % 5 + 0.5));
       return Tween<Offset>(
         begin: const Offset(0, 0),
         end: Offset(end, 0),
@@ -67,71 +69,154 @@ class _CardAnimationWidgetState extends State<CardAnimationWidget>
       onTap: () {
         _controller.forward();
       },
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          ...List.generate(4, (index) {
-            return AnimatedBuilder(
-              animation: _animations[index],
-              builder: (context, child) {
-                // Animasyon başlamadan önce kartlar merkezde üst üste duracak
-                double cardLeftPosition = screenWidth / 2 -
-                    cardWidth / 2 +
-                    _animations[index].value.dx;
-                return Positioned(
-                  left: cardLeftPosition,
-                  top: MediaQuery.of(context).size.height / 2 -150,
-                  child: cardVisible[index]
-                      ? Draggable(
-                          data: index,
-                          feedback: const Material(
-                            child: FalastraCard(),
-                          ),
-                          childWhenDragging: Container(),
-                          child: const FalastraCard(),
-                        )
-                      : Container(),
+      child: SingleChildScrollView( // Yatay kaydırma sağlamak için
+        scrollDirection: Axis.horizontal,
+        child: SizedBox(
+          width: screenWidth + 800, // Kartlar için ekstra genişlik
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              // Kartların gösterimi için animasyonlar
+              ...List.generate(10, (index) {
+                return AnimatedBuilder(
+                  animation: _animations[index],
+                  builder: (context, child) {
+                    double cardLeftPosition = screenWidth / 2 -
+                        cardWidth / 2 +
+                        _animations[index].value.dx;
+                    return Positioned(
+                      left: cardLeftPosition + index, // Kartlar arasında mesafe koymak için
+                      top: MediaQuery.of(context).size.height / 2 - 100,
+                      child: cardVisible[index] && dropCount < 3 // 3 kart bırakıldıktan sonra bırakmayı engelle
+                          ? Draggable(
+                        data: index,
+                        feedback: const Material(
+                          child: FalastraCard(),
+                        ),
+                        childWhenDragging: Container(),
+                        child: const FalastraCard(),
+                      )
+                          : Container(),
+                    );
+                  },
                 );
-              },
-            );
-          }),
+              }),
 
-          Positioned(
-            left: screenWidth / 2 - 50,
-            top: MediaQuery.of(context).size.height / 2 + 50,
-            child: DragTarget<int>(
-              onWillAcceptWithDetails: (data) {
-                return true;
-              },
-              onAcceptWithDetails: (details) {
-                int data = details.data; // Fickleness veriyi burada alıyoruz.
-                setState(() {
-                  droppedCardIndex = data;
-                  cardVisible[data] = false; // İlgili kartı görünmez yap
-                });
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Kart $data bırakıldı')),
-                );
-              },
+              // İlk DragTarget
+              Positioned(
+                left: screenWidth / 2 - 200,
+                top: MediaQuery.of(context).size.height / 2 -300,
+                child: DragTarget<int>(
+                  onWillAcceptWithDetails: (data) {
+                    return dropCount < 3; // 3 kart bırakıldıktan sonra kabul etme
+                  },
+                  onAcceptWithDetails: (details) {
+                    int data = details.data; // Bırakılan kartın indeksini alıyoruz
+                    setState(() {
+                      droppedCardIndices[0] = data;
+                      cardVisible[data] = false; // İlgili kartı görünmez yap
+                      dropCount++; // Bırakılan kart sayısını artır
+                    });
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Kart $data bırakıldı')),
+                    );
+                  },
+                  builder: (context, candidateData, rejectedData) {
+                    return Container(
+                      width: 100,
+                      height: 150,
+                      color: Colors.blue.withOpacity(0.5),
+                      child: Center(
+                        child: droppedCardIndices[0] != null
+                            ? const FalastraCard()
+                            : const Text(
+                          'Buraya bırak',
+                          style: TextStyle(color: Colors.white, fontSize: 16),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
 
-              builder: (context, candidateData, rejectedData) {
-                return Container(
-                  width: 100,
-                  height: 150,
-                  color: Colors.blue.withOpacity(0.5),
-                  child: Center(
-                    child: droppedCardIndex != null
-                        ? const FalastraCard()
-                        : const Text(
-                            'Buraya bırak',
-                            style: TextStyle(color: Colors.white, fontSize: 16),
-                          ),
-                  ),
-                );
-              },
-            ),
+              // İkinci DragTarget
+              Positioned(
+                left: screenWidth / 2 - 50,
+                top: MediaQuery.of(context).size.height / 2 -300,
+                child: DragTarget<int>(
+                  onWillAcceptWithDetails: (data) {
+                    return dropCount < 3; // 3 kart bırakıldıktan sonra kabul etme
+                  },
+                  onAcceptWithDetails: (details) {
+                    int data = details.data; // Bırakılan kartın indeksini alıyoruz
+                    setState(() {
+                      droppedCardIndices[1] = data;
+                      cardVisible[data] = false; // İlgili kartı görünmez yap
+                      dropCount++; // Bırakılan kart sayısını artır
+                    });
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Kart $data bırakıldı')),
+                    );
+                  },
+                  builder: (context, candidateData, rejectedData) {
+                    return Container(
+                      width: 100,
+                      height: 150,
+                      color: Colors.blue.withOpacity(0.5),
+                      child: Center(
+                        child: droppedCardIndices[1] != null
+                            ? const FalastraCard()
+                            : const Text(
+                          'Buraya bırak',
+                          style: TextStyle(color: Colors.white, fontSize: 16),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+
+              // Üçüncü DragTarget
+              Positioned(
+                left: screenWidth / 2 + 100,
+                top: MediaQuery.of(context).size.height / 2 -300,
+                child: DragTarget<int>(
+                  onWillAcceptWithDetails: (data) {
+                    return dropCount < 3; // 3 kart bırakıldıktan sonra kabul etme
+                  },
+                  onAcceptWithDetails: (details) {
+                    int data = details.data; // Bırakılan kartın indeksini alıyoruz
+                    setState(() {
+                      droppedCardIndices[2] = data;
+                      cardVisible[data] = false; // İlgili kartı görünmez yap
+                      dropCount++; // Bırakılan kart sayısını artır
+                    });
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Kart $data bırakıldı')),
+                    );
+                  },
+                  builder: (context, candidateData, rejectedData) {
+                    return Container(
+                      width: 100,
+                      height: 150,
+                      color: Colors.blue.withOpacity(0.5),
+                      child: Center(
+                        child: droppedCardIndices[2] != null
+                            ? const FalastraCard()
+                            : const Text(
+                          'Buraya bırak',
+                          style: TextStyle(color: Colors.white, fontSize: 16),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+
+            ],
           ),
-        ],
+
+        ),
       ),
     );
   }
